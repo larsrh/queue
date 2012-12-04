@@ -1,9 +1,9 @@
 module Main where
 
 import Data.Char (isSpace)
-import Data.Traversable (traverse)
+import Data.Data
 import System.IO
-import System.Environment (getArgs)
+import System.Console.CmdArgs (cmdArgs, args, argPos, (&=))
 import Text.ParserCombinators.Parsec
 
 type Symbol = String
@@ -61,24 +61,43 @@ rule = do
   s' <- multiChar
   return $ Rule { queueHead = qh, inputChar = ic, state = s, push = p, state' = s' }
 
-readFiles :: [String] -> IO String
-readFiles [] = getContents
-readFiles files = fmap concat $ traverse readFile files
+readFiles :: [String] -> [(String, IO String)]
+readFiles [] = [("<stdin>", getContents)]
+readFiles fs = [(f, readFile f) | f <- fs ]
+
+parseFile :: String -> String -> IO (Maybe Program)
+parseFile fileName content = case parse program fileName content of
+  Left err -> do
+    hPutStrLn stderr $ "Parse error at " ++ (show err)
+    return Nothing
+  Right p -> do
+    return $ Just p
+
+data RunMode = Deterministic | NonDeterministic
+  deriving (Show, Data, Typeable)
+
+data Arguments = Arguments {
+  input :: String,
+  files :: [String],
+  mode :: RunMode
+} deriving (Show, Data, Typeable)
 
 main :: IO ()
 main = do
-  args <- getArgs
-  case args of
-    [] -> hPutStrLn stderr "No input string given. If you want the empty string, specify it explicitly, e.g. via ''"
-    x : xs -> do
-      contents <- readFiles xs
-      case parse program "" contents of
-        Left err ->
-          hPutStrLn stderr $ "Parse error at " ++ (show err)
-        Right p -> do
-          let rep = unlines $ map show p
-          hPutStrLn stderr rep
-          putStrLn output
-          where output = if runProgram x p then "Accepted." else "Not accepted"
+  arguments <- cmdArgs $ Arguments {
+    input = "" &= argPos 0,
+    files = [] &= args,
+    mode = Deterministic
+  }
+
+  parsed <- sequence [ content >>= parseFile fileName | (fileName, content) <- readFiles $ files arguments ]
+
+  case sequence parsed of
+    Nothing ->
+      return ()
+    Just rss ->
+      putStrLn $ if runProgram w p then "Accepted." else "Not accepted"
+      where p = concat rss
+            w = input arguments
 
 -- vim: expandtab:ts=2:sw=2
