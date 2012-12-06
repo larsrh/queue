@@ -4,7 +4,11 @@ import Data.Char (isSpace)
 import Data.Data
 import System.IO
 import System.Console.CmdArgs (cmdArgs, args, argPos, (&=))
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (State)
+
+import Machine
+
+{- Common data -}
 
 type Symbol = String
 
@@ -18,8 +22,7 @@ data Rule = Rule {
 
 type Program = [Rule]
 
-runProgram :: String -> Program -> Bool
-runProgram = undefined
+{- Parser -}
 
 program :: GenParser Char st Program
 program = spaces >> sepEndBy rule spaces
@@ -73,14 +76,45 @@ parseFile fileName content = case parse program fileName content of
   Right p -> do
     return $ Just p
 
-data RunMode = Deterministic | NonDeterministic
-  deriving (Show, Data, Typeable)
+{- Execution -}
+
+data State = State {
+  currentState :: Symbol,
+  remainingWord :: String,
+  queue :: [Symbol]
+} deriving Eq
+
+instance Machine Rule State where
+  accepts s = null (queue s) && null (remainingWord s)
+  match s r =
+    case queue s of
+      (q : qs) | q == queueHead r ->
+        fmap mkState $ case (remainingWord s, inputChar r) of
+          (w : ws, Just w') | w == w' -> Just ws
+          (ws, Nothing) -> Just ws
+          _ -> Nothing
+        where mkState remaining = State {
+                currentState = state' r,
+                remainingWord = remaining,
+                queue = push r ++ qs
+              }
+      _ -> Nothing
+
+runProgram :: String -> Program -> IO Bool
+runProgram = undefined
+
+{- Command line -}
+
+data RunMode = Deterministic | Random | All
+  deriving (Data, Typeable)
+
+data OperationBox = forall m. Monad m => Box { unbox :: Operation m }
 
 data Arguments = Arguments {
   input :: String,
   files :: [String],
   mode :: RunMode
-} deriving (Show, Data, Typeable)
+} deriving (Data, Typeable)
 
 main :: IO ()
 main = do
@@ -92,12 +126,11 @@ main = do
 
   parsed <- sequence [ content >>= parseFile fileName | (fileName, content) <- readFiles $ files arguments ]
 
-  case sequence parsed of
+  case fmap concat $ sequence parsed of
     Nothing ->
       return ()
-    Just rss ->
-      putStrLn $ if runProgram w p then "Accepted." else "Not accepted"
-      where p = concat rss
-            w = input arguments
+    Just rs -> do
+      res <- runProgram (input arguments) rs
+      putStrLn $ if res then "Accepted." else "Not accepted"
 
 -- vim: expandtab:ts=2:sw=2

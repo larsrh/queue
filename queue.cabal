@@ -11,6 +11,8 @@ build-type:          Simple
 cabal-version:       >=1.8
 executable queue
   main-is:           Main.hs
-  build-depends:     base ==4.*, parsec ==3.1.*, cmdargs ==0.10.*
-  ghc-options:       -Wall -fno-warn-unused-do-bind
-  extensions:        DeriveDataTypeable
+  build-depends:     base ==4.*, parsec ==3.1.*, cmdargs ==0.10.*, mtl ==2.*, random-fu ==0.2.*, random-extras ==0.19, non-empty ==0.0
+  ghc-options:       -W
+  extensions:        DeriveDataTypeable GADTs KindSignatures RankNTypes MultiParamTypeClasses FunctionalDependencies
+
+-- vim: expandtab:ts=2:sw=2
