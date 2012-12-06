@@ -8,11 +8,12 @@ author:              Lars Hupel
 maintainer:          lars.hupel@mytum.de
 category:            Language
 build-type:          Simple
-cabal-version:       >=1.8
+cabal-version:       >=1.9
+
 executable queue
   main-is:           Main.hs
   build-depends:     base ==4.*, parsec ==3.1.*, cmdargs ==0.10.*, mtl ==2.*, random-fu ==0.2.*, random-extras ==0.19, non-empty ==0.0
   ghc-options:       -W
-  extensions:        DeriveDataTypeable GADTs KindSignatures RankNTypes MultiParamTypeClasses FunctionalDependencies
+  extensions:        DeriveDataTypeable GADTs RankNTypes MultiParamTypeClasses FunctionalDependencies
 
 -- vim: expandtab:ts=2:sw=2

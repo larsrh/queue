@@ -2,10 +2,12 @@ module Main where
 
 import Data.Char (isSpace)
 import Data.Data
+import qualified Data.NonEmpty as NE
 import System.IO
 import System.Console.CmdArgs (cmdArgs, args, argPos, (&=))
 import Text.ParserCombinators.Parsec hiding (State)
 
+import Common
 import Machine
 
 {- Common data -}
@@ -18,7 +20,7 @@ data Rule = Rule {
   state :: Symbol,
   push :: [Symbol],
   state' :: Symbol
-} deriving Show
+} deriving (Show, Eq)
 
 type Program = [Rule]
 
@@ -82,7 +84,7 @@ data State = State {
   currentState :: Symbol,
   remainingWord :: String,
   queue :: [Symbol]
-} deriving Eq
+} deriving (Show, Eq)
 
 instance Machine Rule State where
   accepts s = null (queue s) && null (remainingWord s)
@@ -96,12 +98,19 @@ instance Machine Rule State where
         where mkState remaining = State {
                 currentState = state' r,
                 remainingWord = remaining,
-                queue = push r ++ qs
+                queue = qs ++ push r
               }
       _ -> Nothing
 
-runProgram :: String -> Program -> IO Bool
-runProgram = undefined
+defaultState :: Rule -> String -> State
+defaultState r word = State {
+  currentState = state r,
+  remainingWord = word,
+  queue = [queueHead r]
+}
+
+runProgram :: Monad m => Operation m -> String -> NonEmptyList Rule -> IO Bool
+runProgram op word rs@(NE.Cons r _) = runSuccess op (NE.flatten rs) $ defaultState r word
 
 {- Command line -}
 
@@ -109,6 +118,12 @@ data RunMode = Deterministic | Random | All
   deriving (Data, Typeable)
 
 data OperationBox = forall m. Monad m => Box { unbox :: Operation m }
+
+runWithMode :: RunMode -> String -> NonEmptyList Rule -> IO Bool
+runWithMode mode word rs = case toBox mode of Box op -> runProgram op word rs
+  where toBox Deterministic = Box runFirst
+        toBox Random = Box runRandom
+        toBox All = Box runAll
 
 data Arguments = Arguments {
   input :: String,
@@ -129,8 +144,10 @@ main = do
   case fmap concat $ sequence parsed of
     Nothing ->
       return ()
-    Just rs -> do
-      res <- runProgram (input arguments) rs
+    Just [] ->
+      hPutStrLn stderr "Empty program."
+    Just (r:rs) -> do
+      res <- runWithMode (mode arguments) (input arguments) (NE.Cons r rs)
       putStrLn $ if res then "Accepted." else "Not accepted"
 
 -- vim: expandtab:ts=2:sw=2
