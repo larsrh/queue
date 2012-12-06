@@ -39,9 +39,7 @@ flipFilter (Right ms) = do s <- ms
 runStep :: (Monad m, Machine rule state) => Operation m -> [rule] -> state -> m (Either Bool state)
 runStep op rules s = flipFilter $ apply s $ catMaybes $ map (match s) rules
   where apply s [] = Left $ accepts s
-        apply s (r : rs) = Right $ do
-          selected <- select op $ NE.Cons r rs
-          return selected
+        apply _ (r : rs) = Right $ select op $ NE.Cons r rs
 
 runUntilFinal :: (Monad m, Machine rule state) => Operation m -> [rule] -> state -> m Bool
 runUntilFinal op rules s = do ebs <- compress op $ runStep op rules s
