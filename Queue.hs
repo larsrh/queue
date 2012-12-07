@@ -1,11 +1,17 @@
+{-# LANGUAGE DoAndIfThenElse #-}
+
 module Queue (
   Rule,
   Program,
   program,
-  runProgram
+  runQueue,
+  searchQueue
 ) where
 
+import Control.Applicative (liftA2)
 import Data.Char (isSpace)
+import Data.List (unfoldr)
+import Data.Maybe (catMaybes)
 import qualified Data.NonEmpty as NE
 import Text.ParserCombinators.Parsec hiding (State)
 
@@ -99,5 +105,22 @@ defaultState r word = State {
   queue = [queueHead r]
 }
 
-runProgram :: Monad m => Operation m -> String -> NonEmptyList Rule -> IO Bool
-runProgram op word rs@(NE.Cons r _) = runSuccess op (NE.flatten rs) $ defaultState r word
+runQueue :: Monad m => Operation m -> String -> NonEmptyList Rule -> IO Bool
+runQueue op word rs@(NE.Cons r _) = runSuccess op (NE.flatten rs) $ defaultState r word
+
+searchQueue :: Monad m => Operation m -> String -> String -> NonEmptyList Rule -> IO String
+searchQueue op word sep rs = search suffixes
+  where search [] = undefined
+        search (suff : suffs) = do
+          let w = word ++ sep ++ suff
+          res <- runQueue op w rs
+          if res then
+            return w
+          else
+            search suffs
+        suffixes = concat $ unfoldr (Just . dupl . gen) [[]]
+        dupl x = (x, x)
+        gen = liftA2 (:) chars
+        chars = catMaybes $ map inputChar $ NE.flatten rs
+
+-- vim: expandtab:ts=2:sw=2
