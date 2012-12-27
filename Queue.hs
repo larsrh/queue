@@ -86,7 +86,7 @@ instance Machine Rule State where
   accepts s = null (queue s) && null (remainingWord s)
   match s r =
     case queue s of
-      (q : qs) | q == queueHead r ->
+      (q : qs) | q == queueHead r && currentState s == state r ->
         fmap mkState $ case (remainingWord s, inputChar r) of
           (w : ws, Just w') | w == w' -> Just ws
           (ws, Nothing) -> Just ws
