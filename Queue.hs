@@ -109,7 +109,7 @@ runQueue :: Monad m => Operation m -> String -> NonEmptyList Rule -> IO Bool
 runQueue op word rs@(NE.Cons r _) = runSuccess op (NE.flatten rs) $ defaultState r word
 
 searchQueue :: Monad m => Operation m -> String -> String -> NonEmptyList Rule -> IO String
-searchQueue op word sep rs = search suffixes
+searchQueue op word sep rs = search $ [] : suffixes
   where search [] = undefined
         search (suff : suffs) = do
           let w = word ++ sep ++ suff
